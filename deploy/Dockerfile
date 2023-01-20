@@ -1,8 +1,8 @@
-FROM alpine:3.15 AS build
+FROM alpine:latest AS build
 
-RUN apk --no-cache add libc6-compat device-mapper findutils zfs build-base linux-headers python3 bash git wget cmake pkgconfig ndctl-dev && \
+RUN apk --no-cache add libc6-compat device-mapper findutils zfs build-base linux-headers python3 bash git wget cmake pkgconfig ndctl-dev go && \
     apk --no-cache add thin-provisioning-tools --repository http://dl-3.alpinelinux.org/alpine/edge/main/ && \
-    apk --no-cache add go==1.16.10-r0 --repository http://dl-3.alpinelinux.org/alpine/v3.14/community/ && \
+    #apk --no-cache add go==1.18.07-r0 --repository http://dl-3.alpinelinux.org/alpine/v3.14/community/ && \
     echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' >> /etc/nsswitch.conf && \
     rm -rf /var/cache/apk/*
 
@@ -15,24 +15,16 @@ RUN export DBG="-g -Wall" && \
   make -e -C libpfm-4.11.0 && \
   make install -C libpfm-4.11.0
 
-RUN git clone -b v02.00.00.3820 https://github.com/intel/ipmctl/ && \
-    cd ipmctl && \
-    mkdir output && \
-    cd output && \
-    cmake -DRELEASE=ON -DCMAKE_INSTALL_PREFIX=/ -DCMAKE_INSTALL_LIBDIR=/usr/local/lib .. && \
-    make -j all && \
-    make install
-
 ADD . /go/src/github.com/google/cadvisor
 WORKDIR /go/src/github.com/google/cadvisor
 
 ENV GOROOT /usr/lib/go
 ENV GOPATH /go
-ENV GO_FLAGS="-tags=libpfm,netgo,libipmctl"
+ENV GO_FLAGS="-tags=libpfm,netgo"
 
 RUN ./build/build.sh
 
-FROM alpine:3.15
+FROM alpine:latest
 MAINTAINER dengnan@google.com vmarmol@google.com vishnuk@google.com jimmidyson@gmail.com stclair@google.com
 
 RUN apk --no-cache add libc6-compat device-mapper findutils zfs ndctl && \
@@ -42,7 +34,6 @@ RUN apk --no-cache add libc6-compat device-mapper findutils zfs ndctl && \
 
 # Grab cadvisor,libpfm4 and libipmctl from "build" container.
 COPY --from=build /usr/local/lib/libpfm.so* /usr/local/lib/
-COPY --from=build /usr/local/lib/libipmctl.so* /usr/local/lib/
 COPY --from=build /go/src/github.com/google/cadvisor/cadvisor /usr/bin/cadvisor
 
 EXPOSE 8080

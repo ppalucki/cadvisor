@@ -85,7 +85,7 @@ func parseConfig(file *os.File) (events PerfEvents, err error) {
 	err = decoder.Decode(&events)
 	if err != nil {
 		err = fmt.Errorf("unable to load perf events configuration from %q: %q", file.Name(), err)
-		return
+		return events, err
 	}
 	return
 }
